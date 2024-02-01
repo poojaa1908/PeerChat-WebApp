@@ -5,7 +5,7 @@ let uid = String(Math.floor(Math.random() * 10000));
 
 let client;
 let channel;
-
+let que;
 let queryString = window.location.search;
 let urlParams = new URLSearchParams(queryString);
 let roomId = urlParams.get('room');
