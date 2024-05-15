@@ -15,13 +15,12 @@ Node.js
 
 Getting Started
 To run this application locally, follow these steps:
-
-Clone this repository to your local machine.
-Install Node.js if you haven't already.
-Navigate to the project directory in your terminal.
-Run npm install to install dependencies.
-Start the server by running node server.js.
-Open your web browser and navigate to http://localhost:3000.
+1.	Clone this repository to your local machine.
+2.	Install Node.js if you haven't already.
+3.	Navigate to the project directory in your terminal.
+4.	Run npm install to install dependencies.
+5.	Start the server by running node server.js.
+6.	Open your web browser and navigate to http://localhost:3000.
 Usage
 Upon accessing the application, users can initiate video calls by entering their desired chat room.
 Share the unique room URL with other participants to join the video call.
