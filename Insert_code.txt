@@ -1,71 +1,32 @@
-const { Client } = require('@elastic/elasticsearch');
-const express = require('express');
-const bodyParser = require('body-parser');
+const fs = require('fs');
+const csv = require('csv-parser');
+const { createObjectCsvWriter } = require('csv-writer');
 
-const client = new Client({ node: 'http://localhost:9200' }); // Replace with your Elasticsearch server URL
-const app = express();
+const inputFilePath = 'input.csv';
+const outputFilePath = 'output.csv';
 
-app.use(bodyParser.json());
-
-// Endpoint to show all incidents
-app.get('/incidents', async (req, res) => {
-  try {
-    const response = await client.search({
-      index: 'incidents',
-      body: {
-        query: {
-          match_all: {}
-        }
-      }
-    });
-    res.json(response.hits.hits);
-  } catch (error) {
-    console.error('Error fetching all incidents:', error);
-    res.status(500).send('Error fetching all incidents');
-  }
+const csvWriter = createObjectCsvWriter({
+  path: outputFilePath,
+  header: [
+    { id: 'start_date', title: 'start_date' }
+  ]
 });
 
-// Endpoint to search incidents based on provided fields
-app.post('/search', async (req, res) => {
-  const { app_name, channel_name, severity, category, issue_id } = req.body;
-  const mustQueries = [];
+const results = [];
 
-  if (app_name) {
-    mustQueries.push({ match: { app_name } });
-  }
-  if (channel_name) {
-    mustQueries.push({ match: { channel_name } });
-  }
-  if (severity) {
-    mustQueries.push({ match: { severity } });
-  }
-  if (category) {
-    mustQueries.push({ match: { category } });
-  }
-  if (issue_id) {
-    mustQueries.push({ match: { issue_id } });
-  }
-
-  try {
-    const response = await client.search({
-      index: 'incidents',
-      body: {
-        query: {
-          bool: {
-            must: mustQueries
-          }
-        }
-      }
-    });
-    res.json(response.hits.hits);
-  } catch (error) {
-    console.error('Error searching incidents:', error);
-    res.status(500).send('Error searching incidents');
-  }
-});
-
-// Start the server
-const port = 3000;
-app.listen(port, () => {
-  console.log(`Server is running on http://localhost:${port}`);
-});
+fs.createReadStream(inputFilePath)
+  .pipe(csv())
+  .on('data', (row) => {
+    // Assuming 'start_date' is the column containing dates
+    const formattedDate = new Date(row.start_date).toISOString().replace('T', ' ').replace(/\.\d{3}Z/, '');
+    results.push({ start_date: formattedDate });
+  })
+  .on('end', () => {
+    csvWriter.writeRecords(results)
+      .then(() => {
+        console.log(`CSV file '${outputFilePath}' has been written with formatted dates.`);
+      })
+      .catch((error) => {
+        console.error('Error writing CSV:', error);
+      });
+  });
