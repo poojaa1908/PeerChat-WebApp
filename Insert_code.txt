@@ -1,40 +1,71 @@
 const { Client } = require('@elastic/elasticsearch');
+const express = require('express');
+const bodyParser = require('body-parser');
 
-// Initialize the Elasticsearch client
-const client = new Client({
-  node: 'http://localhost:9200' // Replace with your Elasticsearch server URL
+const client = new Client({ node: 'http://localhost:9200' }); // Replace with your Elasticsearch server URL
+const app = express();
+
+app.use(bodyParser.json());
+
+// Endpoint to show all incidents
+app.get('/incidents', async (req, res) => {
+  try {
+    const response = await client.search({
+      index: 'incidents',
+      body: {
+        query: {
+          match_all: {}
+        }
+      }
+    });
+    res.json(response.hits.hits);
+  } catch (error) {
+    console.error('Error fetching all incidents:', error);
+    res.status(500).send('Error fetching all incidents');
+  }
 });
 
-// Sample data to be inserted
-const incidentData = {
-  channel_name: 'Slack',
-  app_name: 'MyApp',
-  severity: 2,
-  issue_id: '12345',
-  lessons_learned: 'Ensure to monitor the application logs regularly.',
-  why1: 'Insufficient logging',
-  why2: 'Lack of monitoring',
-  why3: 'Missed alerts',
-  why4: 'Inadequate response procedure',
-  why5: 'Unclear ownership',
-  category: 'Monitoring',
-  issue_start_date: '2024-06-15T12:00:00Z',
-  issue_end_date: '2024-06-15T15:00:00Z',
-  why_semantic_vector: Array(512).fill(0), // Replace with actual dense vector data
-  lessons_learned_semantic_vector: Array(512).fill(0) // Replace with actual dense vector data
-};
+// Endpoint to search incidents based on provided fields
+app.post('/search', async (req, res) => {
+  const { app_name, channel_name, severity, category, issue_id } = req.body;
+  const mustQueries = [];
 
-// Function to insert data into the index
-async function insertData() {
-  try {
-    const response = await client.index({
-      index: 'incidents',
-      document: incidentData
-    });
-    console.log('Document inserted:', response);
-  } catch (error) {
-    console.error('Error inserting document:', error);
+  if (app_name) {
+    mustQueries.push({ match: { app_name } });
   }
-}
+  if (channel_name) {
+    mustQueries.push({ match: { channel_name } });
+  }
+  if (severity) {
+    mustQueries.push({ match: { severity } });
+  }
+  if (category) {
+    mustQueries.push({ match: { category } });
+  }
+  if (issue_id) {
+    mustQueries.push({ match: { issue_id } });
+  }
 
-insertData();
+  try {
+    const response = await client.search({
+      index: 'incidents',
+      body: {
+        query: {
+          bool: {
+            must: mustQueries
+          }
+        }
+      }
+    });
+    res.json(response.hits.hits);
+  } catch (error) {
+    console.error('Error searching incidents:', error);
+    res.status(500).send('Error searching incidents');
+  }
+});
+
+// Start the server
+const port = 3000;
+app.listen(port, () => {
+  console.log(`Server is running on http://localhost:${port}`);
+});
