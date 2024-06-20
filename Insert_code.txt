@@ -1,0 +1,40 @@
+const { Client } = require('@elastic/elasticsearch');
+
+// Initialize the Elasticsearch client
+const client = new Client({
+  node: 'http://localhost:9200' // Replace with your Elasticsearch server URL
+});
+
+// Sample data to be inserted
+const incidentData = {
+  channel_name: 'Slack',
+  app_name: 'MyApp',
+  severity: 2,
+  issue_id: '12345',
+  lessons_learned: 'Ensure to monitor the application logs regularly.',
+  why1: 'Insufficient logging',
+  why2: 'Lack of monitoring',
+  why3: 'Missed alerts',
+  why4: 'Inadequate response procedure',
+  why5: 'Unclear ownership',
+  category: 'Monitoring',
+  issue_start_date: '2024-06-15T12:00:00Z',
+  issue_end_date: '2024-06-15T15:00:00Z',
+  why_semantic_vector: Array(512).fill(0), // Replace with actual dense vector data
+  lessons_learned_semantic_vector: Array(512).fill(0) // Replace with actual dense vector data
+};
+
+// Function to insert data into the index
+async function insertData() {
+  try {
+    const response = await client.index({
+      index: 'incidents',
+      document: incidentData
+    });
+    console.log('Document inserted:', response);
+  } catch (error) {
+    console.error('Error inserting document:', error);
+  }
+}
+
+insertData();
