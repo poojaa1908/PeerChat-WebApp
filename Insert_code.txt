@@ -2,13 +2,14 @@ const fs = require('fs');
 const csv = require('csv-parser');
 const { createObjectCsvWriter } = require('csv-writer');
 
-const inputFilePath = 'input.csv';
-const outputFilePath = 'output.csv';
+const inputFilePath = 'input.csv';   // Replace with your input file path
+const outputFilePath = 'output.csv'; // Replace with your output file path
 
 const csvWriter = createObjectCsvWriter({
   path: outputFilePath,
   header: [
-    { id: 'start_date', title: 'start_date' }
+    { id: 'StartDate', title: 'StartDate' },
+    { id: 'EndDate', title: 'EndDate' }
   ]
 });
 
@@ -17,16 +18,44 @@ const results = [];
 fs.createReadStream(inputFilePath)
   .pipe(csv())
   .on('data', (row) => {
-    // Assuming 'start_date' is the column containing dates
-    const formattedDate = new Date(row.start_date).toISOString().replace('T', ' ').replace(/\.\d{3}Z/, '');
-    results.push({ start_date: formattedDate });
+    const startDate = parseAndFormatDate(row.StartDate);
+    const endDate = parseAndFormatDate(row.EndDate);
+    if (startDate && endDate) {
+      results.push({ StartDate: startDate, EndDate: endDate });
+    } else {
+      console.error('Invalid date format:', row.StartDate, row.EndDate);
+    }
   })
   .on('end', () => {
     csvWriter.writeRecords(results)
       .then(() => {
-        console.log(`CSV file '${outputFilePath}' has been written with formatted dates.`);
+        console.log(`Formatted dates saved to '${outputFilePath}'.`);
       })
       .catch((error) => {
         console.error('Error writing CSV:', error);
       });
   });
+
+function parseAndFormatDate(dateString) {
+  // Regular expression to match either 'm/d/yyyy hh:mm' or 'mm/dd/yyyy h:m'
+  const dateRegex = /^(\d{1,2})\/(\d{1,2})\/(\d{4}) (\d{1,2}):(\d{1,2})$/;
+  const match = dateString.match(dateRegex);
+  if (!match) return null;
+
+  const [, month, day, year, hours, minutes] = match;
+  const date = new Date(`${year}-${month}-${day} ${hours}:${minutes}:00`);
+
+  // Check if date is valid
+  if (isNaN(date.getTime())) {
+    return null;
+  }
+
+  // Format date to 'yyyy-MM-dd HH:mm:ss'
+  const formattedDate = `${date.getFullYear()}-${padNumber(date.getMonth() + 1)}-${padNumber(date.getDate())} ${padNumber(date.getHours())}:${padNumber(date.getMinutes())}:${padNumber(date.getSeconds())}`;
+  
+  return formattedDate;
+}
+
+function padNumber(num) {
+  return num.toString().padStart(2, '0');
+}
