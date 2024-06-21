@@ -1,61 +1,45 @@
-const fs = require('fs');
-const csv = require('csv-parser');
-const { createObjectCsvWriter } = require('csv-writer');
+const { Client } = require('@elastic/elasticsearch');
+const express = require('express');
+const bodyParser = require('body-parser');
 
-const inputFilePath = 'input.csv';   // Replace with your input file path
-const outputFilePath = 'output.csv'; // Replace with your output file path
+const client = new Client({ node: 'http://localhost:9200' }); // Replace with your Elasticsearch server URL
+const app = express();
 
-const csvWriter = createObjectCsvWriter({
-  path: outputFilePath,
-  header: [
-    { id: 'StartDate', title: 'StartDate' },
-    { id: 'EndDate', title: 'EndDate' }
-  ]
-});
+app.use(bodyParser.json());
 
-const results = [];
+// Endpoint to update the lessons_learned field
+app.post('/update-lessons-learned', async (req, res) => {
+  const { issue_id, lessons_learned } = req.body;
 
-fs.createReadStream(inputFilePath)
-  .pipe(csv())
-  .on('data', (row) => {
-    const startDate = parseAndFormatDate(row.StartDate);
-    const endDate = parseAndFormatDate(row.EndDate);
-    if (startDate && endDate) {
-      results.push({ StartDate: startDate, EndDate: endDate });
-    } else {
-      console.error('Invalid date format:', row.StartDate, row.EndDate);
-    }
-  })
-  .on('end', () => {
-    csvWriter.writeRecords(results)
-      .then(() => {
-        console.log(`Formatted dates saved to '${outputFilePath}'.`);
-      })
-      .catch((error) => {
-        console.error('Error writing CSV:', error);
-      });
-  });
-
-function parseAndFormatDate(dateString) {
-  // Regular expression to match either 'm/d/yyyy hh:mm' or 'mm/dd/yyyy h:m'
-  const dateRegex = /^(\d{1,2})\/(\d{1,2})\/(\d{4}) (\d{1,2}):(\d{1,2})$/;
-  const match = dateString.match(dateRegex);
-  if (!match) return null;
-
-  const [, month, day, year, hours, minutes] = match;
-  const date = new Date(`${year}-${month}-${day} ${hours}:${minutes}:00`);
-
-  // Check if date is valid
-  if (isNaN(date.getTime())) {
-    return null;
+  if (!issue_id || !lessons_learned) {
+    return res.status(400).send('issue_id and lessons_learned are required');
   }
 
-  // Format date to 'yyyy-MM-dd HH:mm:ss'
-  const formattedDate = `${date.getFullYear()}-${padNumber(date.getMonth() + 1)}-${padNumber(date.getDate())} ${padNumber(date.getHours())}:${padNumber(date.getMinutes())}:${padNumber(date.getSeconds())}`;
-  
-  return formattedDate;
-}
+  try {
+    const response = await client.updateByQuery({
+      index: 'incidents',
+      body: {
+        script: {
+          source: "ctx._source.lessons_learned = params.lessons_learned",
+          lang: "painless",
+          params: {
+            lessons_learned: lessons_learned
+          }
+        },
+        query: {
+          term: { issue_id: issue_id }
+        }
+      }
+    });
+    res.json(response);
+  } catch (error) {
+    console.error('Error updating lessons learned:', error);
+    res.status(500).send('Error updating lessons learned');
+  }
+});
 
-function padNumber(num) {
-  return num.toString().padStart(2, '0');
-}
+// Start the server
+const port = 3000;
+app.listen(port, () => {
+  console.log(`Server is running on http://localhost:${port}`);
+});
