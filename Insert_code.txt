@@ -7,9 +7,9 @@ const app = express();
 
 app.use(bodyParser.json());
 
-// Endpoint to perform aggregations
+// Endpoint to perform filtering and aggregations
 app.get('/aggregations', async (req, res) => {
-  const { column } = req.query;
+  const { column, filterSeverity, filterAppName, filterChannelName } = req.query;
 
   if (!column) {
     return res.status(400).send('Column name is required');
@@ -18,19 +18,19 @@ app.get('/aggregations', async (req, res) => {
   // Define the aggregation based on the column parameter
   const aggregations = {
     app_name: {
-      terms: { field: 'app_name' }
+      terms: { field: 'app_name', size: 10000 }
     },
     channel_name: {
-      terms: { field: 'channel_name' }
+      terms: { field: 'channel_name', size: 10000 }
     },
     severity: {
       stats: { field: 'severity' }
     },
     category: {
-      terms: { field: 'category' }
+      terms: { field: 'category', size: 10000 }
     },
     issue_id: {
-      terms: { field: 'issue_id' }
+      terms: { field: 'issue_id', size: 10000 }
     }
   };
 
@@ -39,17 +39,52 @@ app.get('/aggregations', async (req, res) => {
     return res.status(400).send('Invalid column name');
   }
 
+  // Build the query
+  const query = {
+    bool: {
+      must: []
+    }
+  };
+
+  // Apply filters if specified
+  if (filterSeverity) {
+    query.bool.must.push({ term: { severity: filterSeverity } });
+  }
+  if (filterAppName) {
+    query.bool.must.push({ term: { app_name: filterAppName } });
+  }
+  if (filterChannelName) {
+    query.bool.must.push({ term: { channel_name: filterChannelName } });
+  }
+
   try {
     const response = await client.search({
       index: 'incidents',
       body: {
         size: 0, // We are only interested in the aggregation results
+        query: query.bool.must.length ? query : { match_all: {} },
         aggs: {
           [column]: aggregations[column]
         }
       }
     });
-    res.json(response.aggregations[column]);
+
+    // Extract the aggregation results
+    const aggResult = response.aggregations[column];
+
+    // Check for terms aggregation and explain the additional fields
+    if (aggResult && aggResult.buckets) {
+      const resultWithExplanation = {
+        ...aggResult,
+        explanation: {
+          doc_count_error_upper_bound: "The maximum possible error in the document count due to shard-level approximation.",
+          sum_other_doc_count: "The sum of document counts for all terms that are not included in the response."
+        }
+      };
+      res.json(resultWithExplanation);
+    } else {
+      res.json(aggResult);
+    }
   } catch (error) {
     console.error('Error performing aggregations:', error);
     res.status(500).send('Error performing aggregations');
