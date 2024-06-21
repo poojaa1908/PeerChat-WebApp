@@ -7,34 +7,52 @@ const app = express();
 
 app.use(bodyParser.json());
 
-// Endpoint to update the lessons_learned field
-app.post('/update-lessons-learned', async (req, res) => {
-  const { issue_id, lessons_learned } = req.body;
+// Endpoint to perform aggregations
+app.get('/aggregations', async (req, res) => {
+  const { column } = req.query;
 
-  if (!issue_id || !lessons_learned) {
-    return res.status(400).send('issue_id and lessons_learned are required');
+  if (!column) {
+    return res.status(400).send('Column name is required');
+  }
+
+  // Define the aggregation based on the column parameter
+  const aggregations = {
+    app_name: {
+      terms: { field: 'app_name' }
+    },
+    channel_name: {
+      terms: { field: 'channel_name' }
+    },
+    severity: {
+      stats: { field: 'severity' }
+    },
+    category: {
+      terms: { field: 'category' }
+    },
+    issue_id: {
+      terms: { field: 'issue_id' }
+    }
+  };
+
+  // Check if the column parameter is valid
+  if (!aggregations[column]) {
+    return res.status(400).send('Invalid column name');
   }
 
   try {
-    const response = await client.updateByQuery({
+    const response = await client.search({
       index: 'incidents',
       body: {
-        script: {
-          source: "ctx._source.lessons_learned = params.lessons_learned",
-          lang: "painless",
-          params: {
-            lessons_learned: lessons_learned
-          }
-        },
-        query: {
-          term: { issue_id: issue_id }
+        size: 0, // We are only interested in the aggregation results
+        aggs: {
+          [column]: aggregations[column]
         }
       }
     });
-    res.json(response);
+    res.json(response.aggregations[column]);
   } catch (error) {
-    console.error('Error updating lessons learned:', error);
-    res.status(500).send('Error updating lessons learned');
+    console.error('Error performing aggregations:', error);
+    res.status(500).send('Error performing aggregations');
   }
 });
 
