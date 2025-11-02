@@ -1,0 +1,86 @@
+Yes — this is **a very strong and timely idea**, especially from a **developer onboarding and documentation automation** standpoint. Let’s refine it a bit to make the **problem statement** sharper and the **PoC scope** feasible but impactful.
+
+---
+
+### 🔍 Refined Problem Statement
+
+When new developers join a project, understanding the **existing codebase structure, API flows, and configurations** takes significant manual effort. They depend heavily on KT (knowledge transfer) sessions and scattered documentation, which are often outdated or incomplete.
+
+**Goal:**
+To build an intelligent platform that can **automatically analyze a project repository** (uploaded as a Git folder/ZIP), **generate visual documentation**, and **summarize the architecture, API endpoints, dependencies, and flow** — supplemented with **learning resources** and an **interactive chatbot** for Q&A.
+
+---
+
+### 💡 Core Concept
+
+A **codebase exploration assistant** that converts a project into:
+
+* **Readable architecture diagrams** (class, module, dependency graphs, flowcharts)
+* **Summaries of each module or file**
+* **API endpoint extractions with request/response details**
+* **Dependency tree and configuration overview (like Gradle/Maven)**
+* **Recommended learning links (e.g., Spring Boot concepts, DI, etc.)**
+* **An interactive chatbot** to answer questions about the code or architecture.
+
+---
+
+### 🧠 PoC Scope (Practical MVP)
+
+Start with:
+
+1. **Upload + Analysis Flow**
+
+   * User uploads a project ZIP.
+   * Backend extracts and reads file structure.
+   * Focus on **Spring Boot Java projects** for PoC.
+2. **Static Analysis**
+
+   * Detect package structure, controllers, services, configs, and entities.
+   * Extract API endpoints from `@RestController` and `@RequestMapping`.
+   * Generate a **module dependency graph**.
+3. **LLM Summarization**
+
+   * Summarize major files and flow.
+   * Produce a textual overview and visual flow diagram (e.g., Mermaid or Graphviz).
+4. **Frontend**
+
+   * Sidebar showing folders/files (like in your attached screenshot).
+   * Clicking a file shows:
+
+     * Summary
+     * Flow diagram
+     * Related learning link
+5. **Chatbot**
+
+   * Q&A over analyzed content using RAG (retrieval-augmented generation).
+6. **Optional Integration**
+
+   * Expose it as an **MCP tool** for LangGraph multi-agent setups (later stage).
+
+---
+
+### 🚀 Future Enhancements (Post-PoC)
+
+* Multi-language support (Python, Node.js, etc.)
+* Auto-generated sequence diagrams for service interactions.
+* Integration with GitHub API (upload via repo URL instead of ZIP).
+* Continuous sync with code changes.
+* Team collaboration (comments, annotations).
+
+---
+
+### 🧩 Tech Stack Suggestion (for PoC)
+
+| Component          | Recommendation                                       |
+| ------------------ | ---------------------------------------------------- |
+| Frontend           | React + Tailwind (for file explorer + visualization) |
+| Backend            | Node.js (or Python FastAPI)                          |
+| LLM                | GPT-4/5 via LangGraph multi-agent                    |
+| Static Analysis    | AST parsers (e.g., JavaParser, Tree-sitter)          |
+| Diagram Generation | Mermaid.js / Graphviz                                |
+| Storage            | S3 / local file system                               |
+| Deployment         | Simple web app or MCP plugin                         |
+
+---
+
+Would you like me to help you **narrow down the exact PoC flow** (like what will happen step by step from upload → output) so we can finalize the scope before moving into architecture and implementation?
